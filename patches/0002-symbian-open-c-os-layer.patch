@@ -1,0 +1,133 @@
+diff --git a/cldc/src/vm/os/linux/OS_linux.cpp b/cldc/src/vm/os/linux/OS_linux.cpp
+index f7a2ef26d..385099442 100644
+--- a/cldc/src/vm/os/linux/OS_linux.cpp
++++ b/cldc/src/vm/os/linux/OS_linux.cpp
+@@ -362,6 +362,7 @@ extern "C" void handle_vtalrm_signal(int signo, siginfo_t* sigi, void* uc) {
+ }
+ #endif
+ 
++#ifndef __SYMBIAN32__  // Phorepoc: no POSIX signals in Open C; the timer thread drives the ticks
+ static bool printing_stack = false;
+ 
+ static void handle_other_signals(int sig) {
+@@ -808,6 +809,7 @@ static void handle_segv_siginfo_npe(int sig, siginfo_t* info, void* ucpPtr) {
+   ::exit(1);
+ }
+ #endif //ENABLE_NPCE
++#endif // __SYMBIAN32__
+ 
+ 
+ #if NEED_CLOCK_TICKS
+@@ -957,7 +959,7 @@ void Os::initialize() {
+ 
+   int sa_flags = SA_RESTART;
+ 
+-#if !defined(ARM)
++#if !defined(ARM) && !defined(__SYMBIAN32__)
+   // force execution of signals on separate stack, as otherwise
+   // results can be unpredictable if we'll modify stack in
+   // Java heap and VM will not know. We handle signals either when
+@@ -990,6 +992,7 @@ void Os::initialize() {
+   ::jvm_sigaction (SIGVTALRM, &vtalrm_action, NULL);
+ #endif // ENABLE_TIMER_THREAD
+ 
++#ifndef __SYMBIAN32__
+   // setup handler for SEGV - it prints native registers and Java backtrace
+ #if ( ENABLE_NPCE || ( ENABLE_INTERNAL_CODE_OPTIMIZER ) ) && ARM_EXECUTABLE
+   static struct sigaction segv_action;
+@@ -1023,6 +1026,7 @@ void Os::initialize() {
+   ::jvm_sigaction(SIGTERM, &other_action, NULL);
+   ::jvm_sigaction(SIGHUP,  &other_action, NULL);
+   ::jvm_signal(SIGPIPE, SIG_IGN);
++#endif // __SYMBIAN32__
+ }
+ 
+ 
+diff --git a/cldc/src/vm/os/linux/OS_linux.hpp b/cldc/src/vm/os/linux/OS_linux.hpp
+index 2aefc3c49..e7f52da57 100644
+--- a/cldc/src/vm/os/linux/OS_linux.hpp
++++ b/cldc/src/vm/os/linux/OS_linux.hpp
+@@ -65,7 +65,7 @@ extern "C" {
+   extern address gp_compiler_throw_ArrayIndexOutOfBoundsException_10_ptr;
+ }
+ #include <asm/ucontext.h>
+-#else
++#elif !defined(__SYMBIAN32__)
+ #include <ucontext.h>
+ #endif
+ 
+diff --git a/cldc/src/vm/os/linux/OsMemory_linux.cpp b/cldc/src/vm/os/linux/OsMemory_linux.cpp
+index e61a64a3f..7c1ab3c7f 100644
+--- a/cldc/src/vm/os/linux/OsMemory_linux.cpp
++++ b/cldc/src/vm/os/linux/OsMemory_linux.cpp
+@@ -135,6 +135,26 @@ static inline size_t page_align_up(size_t size) {
+   return align_size_up(size, SysPageSize);
+ }
+ 
++#ifdef __SYMBIAN32__
++// Phorepoc: Open C has no anonymous mmap or mprotect. A chunk is one heap block of its maximum size, committed at once;
++// growing within it always succeeds and the protection calls are no-ops.
++static inline address anon_mmap(address addr, size_t size) {
++  if (addr != NULL) {
++    return NULL;  // the caller (adjust_chunk) tests NULL: no growth past the maximum
++  }
++  // page-aligned block from malloc; the word before it keeps the block's start for jvm_munmap
++  char* raw = (char*)::malloc(size + SysPageSize + sizeof(void*));
++  if (raw == NULL) {
++    return (address)MAP_FAILED;
++  }
++  char* p = (char*)(((size_t)raw + sizeof(void*) + SysPageSize - 1) & ~(size_t)(SysPageSize - 1));
++  ((void**)p)[-1] = raw;
++  return (address)p;
++}
++static inline int protect_area(address ptr, size_t size) { return 0; }
++static inline int unprotect_area(address ptr, size_t size) { return 0; }
++#define jvm_munmap(a, s) (::free(((void**)(a))[-1]), 0)
++#else
+ static inline address anon_mmap(address addr, size_t size) {
+   return (address)jvm_mmap(addr, size, 
+                            PROT_EXEC | PROT_WRITE | PROT_READ,
+@@ -150,6 +170,8 @@ static inline int unprotect_area(address ptr, size_t size) {
+   return mprotect(ptr, size, PROT_READ | PROT_WRITE | PROT_EXEC);
+ }
+ 
++#endif // __SYMBIAN32__
++
+ address OsMemory_allocate_chunk(size_t initial_size,
+                                 size_t max_size, size_t alignment)
+ {
+diff --git a/cldc/src/vm/share/natives/BSDSocket.cpp b/cldc/src/vm/share/natives/BSDSocket.cpp
+index ae502cdf5..ad47f3151 100644
+--- a/cldc/src/vm/share/natives/BSDSocket.cpp
++++ b/cldc/src/vm/share/natives/BSDSocket.cpp
+@@ -65,6 +65,9 @@ extern "C" {
+ #include <netinet/in.h>
+ #include <netdb.h>
+ #include <fcntl.h>
++#ifdef __SYMBIAN32__
++#include <sys/select.h>  /* Phorepoc: Open C declares fd_set there */
++#endif
+ 
+ #if USE_LIBC_GLUE
+ // IMPL_NOTE: this is bad idea
+diff --git a/cldc/src/vm/share/utilities/GlobalDefinitions_gcc.hpp b/cldc/src/vm/share/utilities/GlobalDefinitions_gcc.hpp
+index a5eebf450..3bd224640 100644
+--- a/cldc/src/vm/share/utilities/GlobalDefinitions_gcc.hpp
++++ b/cldc/src/vm/share/utilities/GlobalDefinitions_gcc.hpp
+@@ -134,6 +134,16 @@ inline unsigned int _rotr(unsigned int x, unsigned int y) {
+    return (x >> y) | (x << (32 - y));
+ }
+ 
++#elif defined(__SYMBIAN32__)
++
++// Phorepoc: a breakpoint or VM panic ends the process (the debugger is not there to catch a trap)
++#include <stdlib.h>
++#  define BREAKPOINT abort()
++#  define panic() abort()
++inline unsigned int _rotr(unsigned int x, unsigned int y) {
++  return (x >> y) | (x << (32 - y));
++}
++
+ #else
+ 
+ // if everything else fails - we assume x86

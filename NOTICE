@@ -1,0 +1,16 @@
+phoneme-symbian: the phoneME Feature VM (CLDC-HI) for Phorepoc, on Symbian
+Copyright The Phorepoc Authors (see AUTHORS)
+
+Phorepoc was founded by Kyriakos Bompotis.
+
+Our files (os/src, recipes, registry, patches) are licensed under the GNU General Public License, version 2 only (LICENSE),
+the licence of phoneME, which they build and patch into one executable. A built VM is therefore GPL-2.0-only as a whole.
+
+phoneME itself is not copied here: recipes/fetch.sh fetches the tree named in sources.lock (the archived phoneME
+Subversion repository converted to git, https://github.com/magicus/phoneME, commit
+5a13f65cff07b2211b7b867c51ada4bb9c7d4f32; only cldc/ and legal/ are used) and applies patches/ to it. phoneME is
+Copyright 1990-2009 Sun Microsystems, Inc., GPL-2.0-only (LICENSES/GPL-2.0.txt, LICENSES/phoneME-copyright.txt, and the
+third-party notices in LICENSES/phoneME-thirdparty.txt). Its source files carry no Classpath exception.
+
+Java and all Java-based marks are trademarks of Oracle and/or its affiliates; they are used here only to name the
+software. This VM has not passed any Java compatibility test suite.

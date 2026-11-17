@@ -1,0 +1,19 @@
+phoneME Java VM for Phorepoc -- licence notice and source offer
+
+This package contains the phoneME Feature VM (CLDC-HI 1.1 with its portable C interpreter) built for Phorepoc OS, with
+the CLDC class library romized into the executable. phoneME is copyright Sun Microsystems, Inc. and is licensed under the
+GNU General Public License version 2 only (GPL-2.0), as is everything else in this package. The licence texts are
+installed with it in \resource\phoneme\licences\.
+
+Corresponding source, available to anyone who has this package, for at least three years after the release you installed
+it from:
+
+  1. The unmodified upstream source, pinned by commit in sources.lock of the repository below (the phoneME tree from
+     https://github.com/magicus/phoneME at commit 5a13f65cff07b2211b7b867c51ada4bb9c7d4f32).
+  2. Our changes to it (patches/), our own files, and the scripts that fetch, patch, build and package the VM:
+       https://github.com/Phorepoc/phoneme-symbian   (the release tag of this package)
+     with the toolchain images and build tools in https://github.com/Phorepoc/toolchain and https://github.com/Phorepoc/pdk.
+
+Written offer: if the links above are no longer available, send a request to the address given on the Phorepoc
+organisation page https://github.com/Phorepoc and we will send you the corresponding source on a medium of your choice
+for the cost of the medium.

@@ -1,0 +1,26 @@
+diff --git a/cldc/build/share/jvm.make b/cldc/build/share/jvm.make
+index a38de3577..460a62491 100644
+--- a/cldc/build/share/jvm.make
++++ b/cldc/build/share/jvm.make
+@@ -1997,7 +1997,7 @@ CPP_FLAGS_EXPORT         = $(CPP_DEF_FLAGS) $(CPLUSPLUS_FLAGS)
+ CPP_FLAGS                = $(CPP_FLAGS_EXPORT) $(CPP_INCLUDE_DIRS)
+ 
+ ifneq ($(ENABLE_COMPILATION_WARNINGS), true)
+-CPP_FLAGS               += -Werror
++CPP_FLAGS               += -Wno-error -fpermissive -std=gnu++98 -fno-strict-aliasing -fno-delete-null-pointer-checks -fno-lifetime-dse -w
+ endif
+ 
+ LINK_OPT_FLAGS_debug    = $(DEBUG_SYMBOLS_FLAGS)
+diff --git a/cldc/src/vm/cpu/c/AsmStubs_i386.s b/cldc/src/vm/cpu/c/AsmStubs_i386.s
+index f316c86d5..f32706c09 100644
+--- a/cldc/src/vm/cpu/c/AsmStubs_i386.s
++++ b/cldc/src/vm/cpu/c/AsmStubs_i386.s
+@@ -24,7 +24,7 @@
+ # information or have any questions.
+ #
+ 
+-.arch i486
++.arch i686
+ .text
+ .align 16
+ 
