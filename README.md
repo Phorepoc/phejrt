@@ -104,7 +104,9 @@ repo) gives `phemidp.exe`: 1.49 MB, imports euser, libc, libm and libpthread onl
 were needed: `0004` also makes e32's empty `ASSERT` not break `midpInflateint.h`; `0005` (a hunk of 0002) makes a VM
 breakpoint abort instead of `int $3`. MMP_JOBS=4: the merged VM sources are big.
 
-Not done: the ROM (`SSM_TEST=phemidp`) and a QEMU run. HelloJ1's lines will appear on the serial port as `[J1] ...`.
+Result (J3b): on Phorepoc QEMU x86 the serial log shows `[J1] HelloJ1.startApp: MIDP MIDP-2.1, CLDC CLDC-1.1` and
+`[J1] Form shown`. The ROM needs MEM=512; drive paths are Open C style (`z:/...`).
+
 
 ## Status
 
