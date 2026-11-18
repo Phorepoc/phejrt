@@ -17,8 +17,8 @@
 
 /* Symbian (Open C): the writable Java home is on C:, the configuration (skin.bin, keystore) ships on Z:. */
 #ifdef __SYMBIAN32__
-#define PHE_DEFAULT_HOME   "/c/phejava"
-#define PHE_DEFAULT_CONFIG "/z/phejava/cfg"
+#define PHE_DEFAULT_HOME   "c:/phejava"
+#define PHE_DEFAULT_CONFIG "z:/phejava/cfg"
 #else
 #define PHE_DEFAULT_HOME   "./Java"
 #define PHE_DEFAULT_CONFIG NULL

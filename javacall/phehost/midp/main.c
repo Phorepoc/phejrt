@@ -25,7 +25,7 @@ static void* java_thread(void* arg) {
 
 #ifdef __SYMBIAN32__
 /* An EXE started by the system has no command line: run the test MIDlet that ships in the ROM (Z:\phejava). */
-static char* default_argv[] = { "runMidlet", "-1", "HelloJ1", "-classpathext", "/z/phejava/hello.jar", NULL };
+static char* default_argv[] = { "runMidlet", "-1", "HelloJ1", "-classpathext", "z:/phejava/hello.jar", NULL };
 #endif
 
 int main(int argc, char* argv[]) {
