@@ -12,6 +12,7 @@ public class HelloJ1 extends MIDlet {
         f.append("phoneME on the host");
         Display.getDisplay(this).setCurrent(f);
         System.out.println("[J1] Form shown");
+        try { Thread.sleep(1500); } catch (InterruptedException e) { }
         notifyDestroyed();
     }
     public void pauseApp() {}
