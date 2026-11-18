@@ -64,6 +64,31 @@ a 32-bit gcc wrapper replaces `-static` (the static multilib libm lacks `fmod`);
 (parallel `-j` races on generated headers). `patches/0003`: `Key` -> `KeymapKey` (stub keymap), `--end-group` without
 `-Xlinker`, `socket_notify` also for the `stubs` platform, and a headless display in the stub `lfjport`.
 
+## J2: our headless javacall port, HelloJ1 on the host (2026-11-18)
+
+`javacall/phehost` is our own javacall implementation for a Linux host (GPL-2.0-only; the structure follows the
+phoneME `stubs` directory, the code is new): libc memory, POSIX file/dir (UTF-16 names to UTF-8; `$PHE_JAVA_HOME`,
+`$PHE_JAVA_CONFIG`), pthread os/mutex/condition, a blocking event queue (`javacall_event_send/receive`), the event-queue
+lock, timers (one thread each), lifecycle logging, logging to stdout, and one headless RGB565 display (240x320, or
+`$PHE_LCD_SIZE`; `$PHE_LCD_DUMP` = a PPM of every flush). `main()` runs `JavaTask` on a thread and posts the start event
+with the command line (midp's `runMidlet` argument layout).
+
+`recipes/j2-host.sh` (run after `j1-host.sh build`) builds it as the javacall library, relinks `runMidlet` and runs
+HelloJ1 (a Form, then `notifyDestroyed`):
+
+    [J1] HelloJ1.startApp: MIDP MIDP-2.1, CLDC CLDC-1.1
+    [J1] Form shown
+
+The form is drawn by phoneME's Java look-and-feel into the frame buffer (the PPM has 366 distinct colours). Known gap:
+`JavaTaskImpl` reports `[phehost] lifecycle state 13 status -1` at the end (shutdown with a failure code: the
+`runMidlet` return value is not the `1` that `JavaTaskImpl` expects; the MIDlet itself ended normally). Not done yet:
+key/pen events into the queue, network, push, fonts other than the skin's, sound.
+
+x32 (`recipes/j2-x32-compile.sh`): PCSL, the phehost library (42 objects) and all 155 MIDP C objects compile with
+`-mx32` and no errors (ELF32, x86-64); no link, because the CLDC (asm interpreter, `javacall_i386_gcc`) is i386 and an
+x32 binary cannot run in Docker Desktop's kernel. The Symbian-side build (the `.mmp` from this build, as P1 did for
+CLDC, with the C interpreter) is the next step.
+
 ## Status
 
 `cldc_vm.exe` links for x32 with 0 link stubs, and the SIS builds. It has not yet run on a device or in QEMU. The JNI
