@@ -1,0 +1,131 @@
+diff --git a/cldc/build/javacall_c/Makefile b/cldc/build/javacall_c/Makefile
+new file mode 100644
+index 000000000..6cb53bb38
+--- /dev/null
++++ b/cldc/build/javacall_c/Makefile
+@@ -0,0 +1,15 @@
++#
++# @(#)Makefile	1.8 06/01/26 12:30:46
++#
++# Copyright © 2006 Sun Microsystems, Inc. All rights reserved.
++# SUN PROPRIETARY/CONFIDENTIAL. Use is subject to license terms.
++#
++
++# Master Makefile for linux_i386 build.
++
++# See ../../docs/HowToBuild.txt for build instructions. See
++# ../share/README for an explanation of the build system and how to
++# create a build system for a new configuration.
++
++IsSelfHosted = true
++include ../share/root.make
+diff --git a/cldc/build/javacall_c/javacall_c.cfg b/cldc/build/javacall_c/javacall_c.cfg
+new file mode 100644
+index 000000000..7e739f993
+--- /dev/null
++++ b/cldc/build/javacall_c/javacall_c.cfg
+@@ -0,0 +1,92 @@
++#
++# @(#)linux_i386.cfg	1.23 06/01/26 12:30:47
++#
++# Copyright © 2006 Sun Microsystems, Inc. All rights reserved.
++# SUN PROPRIETARY/CONFIDENTIAL. Use is subject to license terms.
++#
++
++# Build configuration for linux_i386. Since this is a self hosted
++# build (see definition of IsSelfHosted in ./Makefile), the
++# definitions of the following 6 configuration variables are the same
++# for IsRomGen, IsLoopGen, and IsTarget.
++#
++# See ../linux_arm/linux_arm.cfg for an example of a non-self hosted
++# configuration file, which is more typical.
++
++host_os   = linux
++os_family = javacall
++arch      = i386
++compiler  = gcc
++
++host_arch      = i386
++#os_family      = $(host_os)
++arch           = c
++
++ifeq ($(JAVACALL_OUTPUT_DIR),)
++$(error JAVACALL_OUTPUT_DIR is not set)
++endif
++
++CPP_DEF_FLAGS += -I$(PCSL_OUTPUT_DIR)/javacall_i386/inc
++
++PCSL_DIST_DIR = $(PCSL_OUTPUT_DIR)/javacall_i386
++
++MakeDepsMain_javacall = UnixPlatform
++MakeDepsOpts_javacall = -resolveVpath true
++
++LOOP_GEN_FLAGS = +GenerateGNUCode
++ROM_GEN_FLAGS  = +GenerateGNUCode
++
++VERBOSE_MAKE=true
++
++ifndef ENABLE_TIMER_THREAD
++ENABLE_TIMER_THREAD = true
++export ENABLE_TIMER_THREAD__BY = javacall_i386_gcc.cfg
++endif
++
++ifndef MERGE_SOURCE_FILES
++MERGE_SOURCE_FILES  = true
++endif
++
++ifndef SOURCE_MERGER_SIZE
++SOURCE_MERGER_SIZE  = 35
++endif
++
++ifeq ($(IsLoopGen),true)
++    # LoopGen: an .exe that runs on the HOST. It has
++    # an i386 assembler loop generator and will generate the i386
++    # assembler loop.
++    os_family          = $(host_os)
++endif
++
++ifeq ($(IsRomGen),true)
++    # RomGem: an .exe that runs on the HOST. It has
++    # an i386 assembler or C loop. It runs on the HOST to
++    # generate the (machine independent) ROM.cpp file.
++    os_family      = $(host_os)
++endif
++
++ifeq ($(IsTarget),true)
++    export ENABLE_PCSL = true
++
++    arch      = c
++
++    export skip_link_image := true
++
++    JAVACALL_INCLUDE_DIR=$(JAVACALL_OUTPUT_DIR)/inc
++
++    CPP_DEF_FLAGS += -I$(JAVACALL_INCLUDE_DIR) -DLINUX
++
++    JC_STUBS_OBJ = $(JAVACALL_LIB_DIR)/cldc_javanotify_stubs.o
++endif
++
++
++#export skip_link_image := true
++#export BUILD_ANI_LIB := true
++
++# the portable C interpreter (as linux_c.cfg): no assembler loop generator, no JIT -- the build Phorepoc ships (x32)
++export ENABLE_C_INTERPRETER     := true
++export ENABLE_C_INTERPRETER__BY := javacall_c.cfg
++export ENABLE_INTERPRETER_GENERATOR     := false
++export ENABLE_INTERPRETER_GENERATOR__BY := javacall_c.cfg
++export ENABLE_COMPILER                  := false
++export ENABLE_COMPILER__BY              := javacall_c.cfg
+diff --git a/midp/src/ams/ams_base/include/midpInflateint.h b/midp/src/ams/ams_base/include/midpInflateint.h
+index 0e745eafb..3a3736236 100644
+--- a/midp/src/ams/ams_base/include/midpInflateint.h
++++ b/midp/src/ams/ams_base/include/midpInflateint.h
+@@ -66,6 +66,7 @@ typedef struct HuffmanCodeTableHeader {
+ #define MAX_QUICK_CXD  6
+ #define MAX_QUICK_LXL  9
+ 
++#undef ASSERT  /* Symbian: e32 defines an empty ASSERT */
+ #if !defined(ASSERT)
+ #    if 0
+ #        define ASSERT(x) assert((x))

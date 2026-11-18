@@ -198,10 +198,6 @@ javacall_result javacall_security_permission_dialog_display(javacall_utf16* mess
  *
  * @param userPermission the permission level the user chose
  */
-void javanotify_security_permission_dialog_finish(
-                        javacall_security_permission_type userPermission)
-{
-}
 
 /**
  *  Load list of security domains. The function returns in

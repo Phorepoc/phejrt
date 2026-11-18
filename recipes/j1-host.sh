@@ -37,6 +37,8 @@ if [ ! -d "$PM/.git" ]; then git clone -q "$URL" "$PM"; fi
 git -C "$PM" -c advice.detachedHead=false checkout -q -f "$REV"; git -C "$PM" reset -q --hard "$REV"
 git -C "$PM" apply "$PMS/patches/0001-build-with-a-current-gcc.patch"     # cldc: i486 asm, current gcc
 git -C "$PM" apply "$PMS/patches/0003-midp-host-build-fixes.patch"        # midp: four small fixes (see the patch)
+git -C "$PM" apply "$PMS/patches/0004-cldc-c-interpreter-javacall-and-midp-assert.patch"   # J3: javacall_c (C interpreter) + ASSERT
+patch -p1 -d "$PM" < "$PMS/patches/0005-cldc-breakpoint-symbian.patch" > /dev/null   # J3: a breakpoint aborts on Symbian (a hunk of 0002; applies with fuzz, hence patch(1))
 
 # 32-bit compiler wrappers: the makefiles call plain gcc/g++ and expect an i386 host. -static is dropped (the static libm
 # of multilib glibc lacks fmod), warnings are off (2007 code), -lm and $EXTRA_LD are appended at link time.

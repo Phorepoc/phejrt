@@ -23,11 +23,22 @@ static void* java_thread(void* arg) {
     return NULL;
 }
 
+#ifdef __SYMBIAN32__
+/* An EXE started by the system has no command line: run the test MIDlet that ships in the ROM (Z:\phejava). */
+static char* default_argv[] = { "runMidlet", "-1", "HelloJ1", "-classpathext", "/z/phejava/hello.jar", NULL };
+#endif
+
 int main(int argc, char* argv[]) {
     pthread_t t;
+    pthread_attr_t attr;
+#ifdef __SYMBIAN32__
+    if (argc <= 1) { argc = 5; argv = default_argv; }
+#endif
     javacall_initialize_configurations();
     javacall_events_init();
-    if (pthread_create(&t, NULL, java_thread, NULL) != 0) {
+    pthread_attr_init(&attr);
+    pthread_attr_setstacksize(&attr, 1024 * 1024);   /* the C interpreter recurses on the native stack */
+    if (pthread_create(&t, &attr, java_thread, NULL) != 0) {
         fputs("phehost: cannot start the Java thread\n", stderr);
         return 2;
     }

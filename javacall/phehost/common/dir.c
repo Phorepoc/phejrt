@@ -10,8 +10,19 @@
 #include <string.h>
 #include <dirent.h>
 #include <sys/stat.h>
+#ifndef __SYMBIAN32__
 #include <sys/statvfs.h>
+#endif
 #include "javacall_dir.h"
+
+/* Symbian (Open C): the writable Java home is on C:, the configuration (skin.bin, keystore) ships on Z:. */
+#ifdef __SYMBIAN32__
+#define PHE_DEFAULT_HOME   "/c/phejava"
+#define PHE_DEFAULT_CONFIG "/z/phejava/cfg"
+#else
+#define PHE_DEFAULT_HOME   "./Java"
+#define PHE_DEFAULT_CONFIG NULL
+#endif
 #include "phehost_util.h"
 
 #ifdef __cplusplus
@@ -51,10 +62,14 @@ javacall_utf16* javacall_dir_get_next(javacall_handle handle, int* /*OUT*/ outFi
 }
 
 javacall_int64 javacall_dir_get_free_space_for_java(void) {
+#ifdef __SYMBIAN32__
+    return (javacall_int64)32 * 1024 * 1024;   /* Open C has no statvfs: a fixed budget for the Java home */
+#else
     struct statvfs s;
     const char* r = getenv("PHE_JAVA_HOME");
     if (statvfs(r ? r : ".", &s) != 0) return 0;
     return (javacall_int64)s.f_bavail * (javacall_int64)s.f_frsize;
+#endif
 }
 
 static javacall_result put(const char* utf8, javacall_utf16* out, int* outLen) {
@@ -69,7 +84,7 @@ static javacall_result put(const char* utf8, javacall_utf16* out, int* outLen) {
 javacall_result javacall_dir_get_root_path(javacall_utf16* /* OUT */ rootPath, int* /* IN | OUT */ rootPathLen) {
     const char* r = getenv("PHE_JAVA_HOME");
     char buf[PHE_MAX_PATH];
-    snprintf(buf, sizeof(buf), "%s", r ? r : "./Java");
+    snprintf(buf, sizeof(buf), "%s", r ? r : PHE_DEFAULT_HOME);
     mkdir(buf, 0777);
     return put(buf, rootPath, rootPathLen);
 }
@@ -78,8 +93,9 @@ javacall_result javacall_dir_get_config_path(javacall_utf16* /* OUT */ configPat
     const char* c = getenv("PHE_JAVA_CONFIG");
     const char* r = getenv("PHE_JAVA_HOME");
     char buf[PHE_MAX_PATH];
+    if (!c) c = PHE_DEFAULT_CONFIG;
     if (c) snprintf(buf, sizeof(buf), "%s", c);
-    else snprintf(buf, sizeof(buf), "%s/appdb", r ? r : "./Java");
+    else snprintf(buf, sizeof(buf), "%s/appdb", r ? r : PHE_DEFAULT_HOME);
     mkdir(buf, 0777);
     return put(buf, configPath, configPathLen);
 }

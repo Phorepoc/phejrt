@@ -89,6 +89,23 @@ x32 (`recipes/j2-x32-compile.sh`): PCSL, the phehost library (42 objects) and al
 x32 binary cannot run in Docker Desktop's kernel. The Symbian-side build (the `.mmp` from this build, as P1 did for
 CLDC, with the C interpreter) is the next step.
 
+## J3: the MIDP runtime as one Symbian x32 EXE (2026-11-18, in progress)
+
+`recipes/j3-gen.sh` (after `j1-host.sh build` and `j2-host.sh`) builds PCSL, the **C-interpreter** CLDC-HI VM (new
+`cldc/build/javacall_c`, `patches/0004`) and MIDP for the javacall platform with the phehost port, checks that the host
+`runMidlet` still runs HelloJ1, keeps the compiler commands, and `gen_mmp_midp.py` writes `phemidp.mmp`: 223 sources
+(152 MIDP, the VM's own, PCSL's javacall modules, javacall/phehost) with the macros in one force-included header.
+The phehost port builds unchanged for Symbian (Open C: pthreads, POSIX files); `#ifdef __SYMBIAN32__` selects the debug
+port for output (`phe_symbian.cpp`: RDebug::RawPrint), Z:/C: default directories (`/z/phejava/cfg`, `/c/phejava`),
+no `statvfs`, and the built-in command line `runMidlet -1 HelloJ1 -classpathext /z/phejava/hello.jar`.
+
+The x32 build (Phorepoc's `emitter/build_mmp_x32.py`, key `phemidp`, `emitter/components_phemidp.py` in the private
+repo) gives `phemidp.exe`: 1.49 MB, imports euser, libc, libm and libpthread only, **0 link stubs**. Two more patches
+were needed: `0004` also makes e32's empty `ASSERT` not break `midpInflateint.h`; `0005` (a hunk of 0002) makes a VM
+breakpoint abort instead of `int $3`. MMP_JOBS=4: the merged VM sources are big.
+
+Not done: the ROM (`SSM_TEST=phemidp`) and a QEMU run. HelloJ1's lines will appear on the serial port as `[J1] ...`.
+
 ## Status
 
 `cldc_vm.exe` links for x32 with 0 link stubs, and the SIS builds. It has not yet run on a device or in QEMU. The JNI
