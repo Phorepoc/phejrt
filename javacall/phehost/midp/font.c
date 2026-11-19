@@ -13,6 +13,15 @@ extern "C" {
 #endif
 
 static int cur_size = 1;        /* 0 small, 1 medium, 2 large */
+
+/* index of a code point in the glyph tables (ranges of phe_ranges), -1 = none */
+static int glyph_index(unsigned c) {
+    int i;
+    for (i = 0; i < PHE_NRANGES; i++) {
+        if (c >= phe_ranges[i][0] && c <= phe_ranges[i][1]) return (int)(phe_ranges[i][2] + (c - phe_ranges[i][0]));
+    }
+    return -1;
+}
 static int cur_bold = 0;
 
 static int pick(javacall_font_size size) {
@@ -56,8 +65,9 @@ javacall_result javacall_font_draw(javacall_pixel color, int clipX1, int clipY1,
     for (i = 0; i < textLen; i++) {
         unsigned c = text[i];
         const unsigned short* g;
-        if (c < 32 || c > 126) c = '?';
-        g = f->glyphs + (c - 32) * f->height;
+        int gi = glyph_index(c);
+        if (gi < 0) gi = glyph_index((unsigned)'?');
+        g = f->glyphs + gi * f->height;
         for (row = 0; row < f->height; row++) {
             int py = y + row;
             if (py < clipY1 || py >= clipY2) continue;

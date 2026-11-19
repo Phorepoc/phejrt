@@ -12,6 +12,7 @@
 # /ext (the few files full.args names outside the repo). MEM must be 512: the section alone is 325 MB.
 #
 # Env: REPO (/repo)  SECS (420, QEMU run time)  SHOT_ON ("[J1]": start the scripted steps when the log shows it)
+#      TESTEXE (image staged as ssmtest.exe), NODATA=1 (no Z:phejava), SIS (file copied to C:SISINST.SIS), DRVTXT (C:PHEJDRV.TXT), KEEPDISK=1
 #      MONCMDS (qmon steps, e.g. 'wait:[J1] Form shown;sleep:3;shot:a;sendkey 5;sleep:2;shot:b')  SHOT_QUIT (1)
 set -eu
 REPO=${REPO:-/repo}; cd "$REPO"
@@ -26,10 +27,13 @@ for a, b in ((pre + "Phorepoc" + BS + "catalogue/os/", "/ext/"), (pre + "Phorepo
              (pre + "Symbian-ReverseEngineered" + BS + B + BS + "rom" + BS + "device.txt", "/ext/device.txt"),
              (pre + "Symbian-ReverseEngineered" + BS + "tools/phorepoc-x86/netsurf/engine/Choices.x32", "/ext/Choices.x32")):
     s = s.replace(a, b)
-s = s.rstrip("\n") + "\n" + "\n".join([
-    "--xip", "Sys" + BS + "Bin" + BS + "ssmtest.exe=" + B + "/x32img/phemidp.exe",
-    *[x for f in sorted(os.listdir(B + "/j3/data/cfg")) for x in ("--data", "phejava" + BS + "cfg" + BS + f + "=" + B + "/j3/data/cfg/" + f)],
-    "--data", "phejava" + BS + "hello.jar=" + B + "/j3/data/hello.jar", ""])
+# TESTEXE: the image staged as the SSM test EXE (default the runtime; phejdrv for the install test); NODATA=1: no Z:/phejava
+# (the installed packages carry the configuration)
+extra = ["--xip", "Sys" + BS + "Bin" + BS + "ssmtest.exe=" + os.environ.get("TESTEXE", B + "/x32img/phemidp.exe")]
+if os.environ.get("NODATA") != "1":
+    extra += [x for f in sorted(os.listdir(B + "/j3/data/cfg")) for x in ("--data", "phejava" + BS + "cfg" + BS + f + "=" + B + "/j3/data/cfg/" + f)]
+    extra += ["--data", "phejava" + BS + "hello.jar=" + B + "/j3/data/hello.jar"]
+s = s.rstrip("\n") + "\n" + "\n".join(extra + [""])
 L, out, i = s.split("\n"), [], 0
 while i < len(L):                    # a file that is not here either (the original ROM listed one that was missing): drop its pair
     if i + 1 < len(L) and L[i] in ("--data", "--xip") and ("C:" + BS) in L[i + 1]:
@@ -51,10 +55,13 @@ tail -1 /tmp/rombuild.log
 ln -sfn "$REPO/$B" /out
 mkdir -p /out/disk /out/ekern
 [ -f /out/disk/regress-template.img ] || IMG=/out/disk/regress-template.img bash tools/phorepoc-x86/make_disk.sh > /dev/null
-cp /out/disk/regress-template.img /out/disk/boot.img
+[ "${KEEPDISK:-0}" = 1 ] && [ -f /out/disk/boot.img ] || cp /out/disk/regress-template.img /out/disk/boot.img
+# SIS=<file in $REPO>: put it on C: as SISINST.SIS (the install test's input); DRVTXT=<hex uid>: C:\PHEJDRV.TXT for phejdrv
+[ -z "${SIS:-}" ] || MTOOLS_SKIP_CHECK=1 mcopy -o -i /out/disk/boot.img@@1M "$SIS" ::SISINST.SIS
+[ -z "${DRVTXT:-}" ] || { printf '%s' "$DRVTXT" > /tmp/phejdrv.txt; MTOOLS_SKIP_CHECK=1 mcopy -o -i /out/disk/boot.img@@1M /tmp/phejdrv.txt ::PHEJDRV.TXT; }
 export SECONDARY=rom SCREEN=${SCREEN:-360x640} SCALE=${SCALE:-2} MEM=512 DISK=1 DISKIMG=/out/disk/boot.img SHOT=1 \
        SHOT_WAIT=${SHOT_WAIT:-380} SECS=${SECS:-420} LOGMAX=4000000 KCLEAN=0 UARTBATCH=0 DUMP=0 SLIDE=0 \
        SHOT_ON="${SHOT_ON:-[J1]}" SHOT_QUIT=${SHOT_QUIT:-1} MONCMDS="${MONCMDS:-}"
 bash tools/phorepoc-x86/ekern/make_ekern.sh run > /tmp/boot.log 2>&1 || true
 tail -3 /tmp/boot.log | cut -c1-200
-grep -a '\[J1\]\|\[phehost\]' /out/ekern/run.log | tr -cd '\11\12\15\40-\176' | head -40
+grep -a '\[J1\]\|\[phehost\]\|\[J5\]\|\[phejlaunch\]' /out/ekern/run.log | tr -cd '\11\12\15\40-\176' | head -40

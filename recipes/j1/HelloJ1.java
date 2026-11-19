@@ -12,6 +12,7 @@ import javax.microedition.lcdui.ItemStateListener;
 import javax.microedition.lcdui.StringItem;
 import javax.microedition.lcdui.TextField;
 import javax.microedition.midlet.MIDlet;
+import javax.microedition.rms.RecordStore;
 
 /** Test MIDlet: a Form with a text, a numeric field and an Exit command; every event it gets is printed as "[J1] ...". */
 public class HelloJ1 extends MIDlet implements CommandListener, ItemStateListener {
@@ -21,8 +22,25 @@ public class HelloJ1 extends MIDlet implements CommandListener, ItemStateListene
     public void startApp() {
         System.out.println("[J1] HelloJ1.startApp: MIDP " + System.getProperty("microedition.profiles")
             + ", CLDC " + System.getProperty("microedition.configuration"));
+        int shown = 0;
+        try {   // RMS: a record store is a file under the Java home (C: on Symbian); the count survives a restart
+            RecordStore rs = RecordStore.openRecordStore("j5", true);
+            int before = rs.getNumRecords();
+            byte[] d = ("run " + (before + 1) + " éαЖ").getBytes();
+            rs.addRecord(d, 0, d.length);
+            int after = rs.getNumRecords();
+            rs.closeRecordStore();
+            rs = RecordStore.openRecordStore("j5", false);
+            String last = new String(rs.getRecord(rs.getNextRecordID() - 1));
+            rs.closeRecordStore();
+            System.out.println("[J1] rms records " + before + " -> " + after + ", last='" + last.substring(0, 5) + "'");
+            shown = after;
+        } catch (Exception e) {
+            System.out.println("[J1] rms failed: " + e);
+        }
         Form f = new Form("HelloJ1");
         f.append(new StringItem("phoneME MIDP", "on Phorepoc OS"));
+        f.append(new StringItem("runs: " + shown, "éèü αβγ Жж"));
         number = new TextField("number", "", 8, TextField.NUMERIC);
         f.append(number);
         f.addCommand(exit);

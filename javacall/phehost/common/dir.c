@@ -94,6 +94,12 @@ javacall_result javacall_dir_get_config_path(javacall_utf16* /* OUT */ configPat
     const char* r = getenv("PHE_JAVA_HOME");
     char buf[PHE_MAX_PATH];
     if (!c) c = PHE_DEFAULT_CONFIG;
+#ifdef __SYMBIAN32__
+    if (!getenv("PHE_JAVA_CONFIG")) {   /* an installed runtime ships its configuration on the install drive; the ROM test image on Z: */
+        struct stat st;
+        if (stat("c:/resource/phejava/cfg/skin.bin", &st) == 0) c = "c:/resource/phejava/cfg";
+    }
+#endif
     if (c) snprintf(buf, sizeof(buf), "%s", c);
     else snprintf(buf, sizeof(buf), "%s/appdb", r ? r : PHE_DEFAULT_HOME);
     mkdir(buf, 0777);

@@ -1,0 +1,14 @@
+#include <platform_paths.hrh>
+// Copyright The Phorepoc Authors
+// SPDX-License-Identifier: GPL-2.0-only
+// phejdrv -- J5 boot-test driver: install a SIS, find the registered application through AppArc, start it
+TARGET          phejdrv.exe
+TARGETTYPE      exe
+UID             0x100039CE 0xE5A0FF02
+CAPABILITY      None
+VENDORID        0
+
+OS_LAYER_SYSTEMINCLUDE
+SOURCEPATH      .
+SOURCE          phejdrv.cpp
+LIBRARY         euser.lib efsrv.lib apgrfx.lib apparc.lib

@@ -108,6 +108,27 @@ Result (J3b): on Phorepoc QEMU x86 the serial log shows `[J1] HelloJ1.startApp: 
 `[J1] Form shown`. The ROM needs MEM=512; drive paths are Open C style (`z:/...`).
 
 
+## J5: MIDlet suites as SIS packages (2026-11-19)
+
+`recipes/j5-pack.py` (host, Python 3 + the pdk's `tools/emitter` + the private repo's rcomp) builds a SIS for a suite, and
+optionally the runtime in the same package:
+
+| File on the phone | What it is |
+|---|---|
+| `!:\sys\bin\phejl_<uid>.exe` | `phejlaunch.exe` (os/src/phejlaunch, 1.7 KB) copied with the suite's UID3 and SID, no capabilities |
+| `!:\private\10003a3f\import\apps\phejl_<uid>_reg.rsc`, `!:\resource\apps\phejl_<uid>_loc.rsc` | the AppArc registration: the caption in the menu, the launcher as the application |
+| `!:\private\<uid>\launch.txt` | the runtime's command line: `-1 <MIDlet> -classpathext c:/resource/phejava/suites/<uid>/app.jar` |
+| `!:\resource\phejava\suites\<uid>\app.jar` | the suite (not in a private directory: the runtime is another process and could not read it) |
+| `!:\sys\bin\phemidp.exe`, `!:\resource\phejava\cfg\*` | the runtime and its skin (with `--runtime`; else the package depends on the runtime package) |
+| `!:\resource\phejava\licences\*` | NOTICE, LICENSE, GPL-2.0, phoneME and DejaVu/Bitstream notices, and `SOURCE-OFFER.txt` |
+
+Starting an application from the menu makes AppArc run the launcher, which reads `launch.txt` and starts `phemidp.exe`; no
+command line is built into the runtime. Tested on QEMU x86: `phejdrv.exe` (the boot-test driver) lets the real installer
+(`sisinst`) install `c:\sisinst.sis`, waits until AppArc lists the UID, prints its caption and starts it with
+`RApaLsSession::StartApp`, exactly the menu's call. RMS (`javax.microedition.rms`) stores its records under `c:\phejava`;
+the test MIDlet prints the record count of a store it adds to. The built-in fonts now cover ASCII, Latin-1, Greek and
+Cyrillic (343 glyphs per size).
+
 ## Status
 
 `cldc_vm.exe` links for x32 with 0 link stubs, and the SIS builds. It has not yet run on a device or in QEMU. The JNI

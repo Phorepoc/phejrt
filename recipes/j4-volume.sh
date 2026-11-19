@@ -23,14 +23,30 @@ awk 'prev ~ /^--(xip|data|builtin-device)$/ && /=/ && !/^--/ { sub(/^[^=]*=/, ""
   | while IFS= read -r f; do [ -f "$f" ] && echo "$f"; done | grep -v '^C:' | grep -v '\.\./' | sort -u > /tmp/j4-refs.txt
 { git ls-files emitter toolchain tools shim src; cat /tmp/j4-refs.txt; echo $B/rom/full.args
   printf '%s\n' emitter/euser_x32.dll emitter/efsrv_x32.dll emitter/hal_x32.dll emitter/efile_x32.exe emitter/*.pcrel \
-    $B/uexe/uhello.imp.exe $B/uexe/uhello.imp.exe.pcrel $B/x32img/phemidp.exe $B/j3/data/hello.jar; find $B/j3/data -type f
+    $B/uexe/uhello.imp.exe $B/uexe/uhello.imp.exe.pcrel $B/x32img/e32strt.exe $B/x32img/phemidp.exe $B/j3/data/hello.jar; find $B/j3/data -type f
   ls $B/x32img/*.pcrel $B/x32img/*.meta $B/x32img/*.stubs; } | sort -u > /tmp/j4-all.txt
 tar c -T /tmp/j4-all.txt 2> /dev/null | docker exec -i "$C" tar x -C /repo
 tar c --exclude=.git baseline/kernelhwsrv baseline/symbian-2010/oss.FCL.sf.adapt.Qemu \
   baseline/symbian-2010/oss.FCL.sf.os.graphics/graphicsresourceservices baseline/symbian-2010/oss.FCL.sf.os.deviceplatformrelease \
   baseline/symbian-2010/oss.API_REF.Public_API baseline/symbian-2010/oss.FCL.sf.os.ossrv/genericopenlibs/openenvcore \
-  .epoc32 $B/mmp-x32/libcrt0 third_party/symbian2010-camerasc | docker exec -i "$C" tar x -C /repo
+  baseline/symbian-2010/oss.FCL.sf.os.graphics/windowing/windowserver/group baseline/symbian-2010/oss.FCL.sf.os.graphics/windowing/windowserver/eabi baseline/symbian-2010/oss.FCL.sf.os.graphics/fbs/fontandbitmapserver/group baseline/symbian-2010/oss.FCL.sf.os.graphics/fbs/fontandbitmapserver/eabi baseline/symbian-rcl3/oss.FCL.sf.mw.appsupport/appfw/apparchitecture/group baseline/symbian-rcl3/oss.FCL.sf.mw.appsupport/appfw/apparchitecture/eabi \n  .epoc32 $B/mmp-x32/libcrt0 third_party/symbian2010-camerasc | docker exec -i "$C" tar x -C /repo
 # full.args also names files below baseline/symbian-2010/../ (= baseline/) and a few outside the repo (/ext)
 awk 'prev ~ /^--(xip|data)$/ && /=/ { sub(/^[^=]*=/, ""); if ($0 ~ /\.\.\//) print } { prev = $0 }' $B/rom/full.args \
   | sed 's#baseline/symbian-2010/\.\./#baseline/#' | while IFS= read -r f; do [ -f "$f" ] && echo "$f"; done | tar c -T - 2> /dev/null | docker exec -i "$C" tar x -C /repo || true
-echo "volume ready: $C ($C-vol); the files outside the repo (Phorepoc catalogue, dbus, device.txt, Choices.x32) go to /ext by hand, see j4-rom-boot.sh"
+echo "volume ready: $C ($C-vol)"
+# the files full.args names outside the repo: <home>\Phorepoc\<repo>/os/<path> (the public repos' checkouts, next to the private
+# one) and two of the private repo's own, remapped to /ext (j4-rom-boot.sh does the same remapping of the names)
+PUB=${PHOREPOC_REPOS:-$P/../Phorepoc}
+awk 'prev ~ /^--(xip|data)$/ && /=C:/ { sub(/^[^=]*=/, ""); print } { prev = $0 }' $B/rom/full.args | tr -d '\r' | while IFS= read -r f; do
+  case "$f" in
+    *Phorepoc*catalogue/os/*)    rel=${f#*catalogue/os/};    src="$PUB/catalogue/os/$rel" ;;
+    *Phorepoc*dbus-symbian/os/*) rel=${f#*dbus-symbian/os/}; src="$PUB/dbus-symbian/os/$rel" ;;
+    *device.txt)                 rel=device.txt;             src="$P/$B/rom/device.txt" ;;
+    *Choices.x32)                rel=Choices.x32;            src="$P/tools/phorepoc-x86/netsurf/engine/Choices.x32" ;;
+    *) continue ;;
+  esac
+  if [ -f "$src" ]; then docker exec "$C" mkdir -p "/ext/$(dirname "$rel")"; docker cp "$(cygpath -m "$src" 2>/dev/null || echo "$src")" "$C:/ext/$rel"; fi
+done
+echo "/ext done"
+# a Windows checkout keeps ProductVariant.hrh in lower case; the mmp preprocessor of the x32 builder is case sensitive on Linux
+docker exec "$C" sh -c 'cd /repo/.epoc32/include && [ -f ProductVariant.hrh ] || cp productvariant.hrh ProductVariant.hrh'
