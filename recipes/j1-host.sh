@@ -27,6 +27,8 @@ fi
 
 W=${J1_WORK:-/work}; PM=$W/pm; OUT=$W/out; M32=$W/m32
 JDK=${JDK_DIR:-/usr/lib/jvm/java-8-openjdk-amd64}
+[ -x "$JDK/bin/javac" ] || { echo "j1-host.sh: no javac in $JDK (JDK_DIR must be a JDK 8)"; exit 1; }
+export JAVA_HOME="$JDK" PATH="$JDK/bin:$PATH"
 LOCK=$PMS/sources.lock
 URL=$(awk -F'\t' '$1=="phoneME"{print $2}' "$LOCK"); REV=$(awk -F'\t' '$1=="phoneME"{print $3}' "$LOCK")
 mkdir -p "$W"; LOG=$W/j1.log; : > "$LOG"
