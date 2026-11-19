@@ -218,7 +218,7 @@ def main():
         # the suite package must not install files of the runtime package (the clash fails the install: -30477, "file in use"):
         # its notices go to its own folder
         own = "!:\\resource\\phejava\\suites\\%08x\\licences\\" % base
-        files += [(d, own + os.path.basename(t), c) for d, t, c in licences()[:3]]
+        files += [(d, own + t.rsplit("\\", 1)[-1], c) for d, t, c in licences()[:3]]
     pkg = SIS.build_package(files, app_uid=base, vendor=vendor, app_name=suite_name, signer=None, version=version, dependencies=deps)
     open(a.out, "wb").write(pkg)
     print("%s: %d bytes, suite package uid %#x, %d MIDlets, %d files" % (a.out, len(pkg), base, len(ms), len(files)))
