@@ -17,6 +17,7 @@ extern "C" {
 #ifdef __SYMBIAN32__
 extern int phe_ws_start(const unsigned short* fb, int w, int h);   /* phe_symbian.cpp: a WSERV window + input */
 extern void phe_ws_flush(void);
+extern int phe_ws_screen_size(int* w, int* h);   /* the screen's size in pixels now (portrait or landscape) */
 #endif
 static javacall_pixel* fb = NULL;
 static int fb_w = 240, fb_h = 320;
@@ -27,6 +28,9 @@ javacall_result javacall_lcd_init(void) {
     if (fb) return JAVACALL_OK;
     s = getenv("PHE_LCD_SIZE");
     if (s) { int w, h; if (sscanf(s, "%dx%d", &w, &h) == 2 && w > 0 && h > 0) { fb_w = w; fb_h = h; } }
+#ifdef __SYMBIAN32__   /* full screen: the MIDlet gets the screen as it is now (360x640 portrait, 640x360 landscape ...) */
+    else { int w, h; if (phe_ws_screen_size(&w, &h) == 0 && w > 0 && h > 0) { fb_w = w; fb_h = h; } }
+#endif
     fb = (javacall_pixel*)calloc((size_t)fb_w * (size_t)fb_h, sizeof(javacall_pixel));
 #ifdef __SYMBIAN32__
     if (fb) phe_ws_start(fb, fb_w, fb_h);

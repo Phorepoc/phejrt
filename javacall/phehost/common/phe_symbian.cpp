@@ -152,6 +152,8 @@ void* WsThread(void*) {
     }
     if (r == KErrNone) {
         const TSize sc = w.iScreen->SizeInPixels();
+        // the window covers the whole screen when the frame is as big (the normal case: lcd.c asks for the screen's size);
+        // a smaller frame (PHE_LCD_SIZE) is centred
         w.iWin.SetExtent(TPoint((sc.iWidth - gW) / 2, (sc.iHeight - gH) / 2), TSize(gW, gH));
         w.iWin.SetBackgroundColor(KRgbWhite);
         w.iWin.PointerFilter(EPointerFilterEnterExit | EPointerFilterMove | EPointerFilterDrag, 0);
@@ -190,6 +192,22 @@ void* WsThread(void*) {
 }
 
 }   // namespace
+
+extern "C" int phe_ws_screen_size(int* aW, int* aH) {
+    RWsSession ws;
+    TInt r = ws.Connect();
+    if (r != KErrNone) return r;
+    CWsScreenDevice* sd = new CWsScreenDevice(ws);
+    r = sd ? sd->Construct() : KErrNoMemory;
+    if (r == KErrNone) {
+        const TSize sc = sd->SizeInPixels();
+        *aW = sc.iWidth;
+        *aH = sc.iHeight;
+    }
+    delete sd;
+    ws.Close();
+    return r;
+}
 
 extern "C" int phe_ws_start(const unsigned short* aFb, int aW, int aH) {
     gFb = aFb;
