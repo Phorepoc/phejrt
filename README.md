@@ -34,7 +34,7 @@ The pdk's `package.yml` builds `package.conf` on every push to main and releases
 - `os/src/phejlaunch`: the per-suite launcher (a copy per application, with its UID); `os/src/phejdrv`: the boot-test driver.
 - `recipes/`: the build (`j1-host.sh`, `j2-host.sh`, `j3-gen.sh`, `gen_mmp_midp.py`), the packer (`j5-pack.py`), and the
   QEMU test scripts (`j4-volume.sh`, `j4-rom-boot.sh`).
-- `catalogue/`: the store text and the unpublished listing drafts.
+- `catalogue/`: the store text (`summary.txt`, `description.md`; the demo's in `catalogue/demo`). The listings live in Phorepoc/index.
 
 ## J1: phoneME MIDP on a Linux host (2026-11-18)
 
@@ -148,7 +148,7 @@ Cyrillic (343 glyphs per size).
   three notices live in `\resource\phejava\suites\<uid>\licences\`.
 Test: `recipes/j4-rom-boot.sh` with `TESTEXE=phejdrv.exe DRVSCRIPT=<script> SISFILES="rt.sis=RT.SIS suite.sis=SUITE.SIS"`; the
 driver (os/src/phejdrv) runs `install`, `install-fail`, `list`, `start`, `sleep`, `uninstall <package uid>`, `gone` lines.
-The Catalogue listing drafts are in `catalogue/` (summary, description, `listing-draft/*.json`; not published).
+The Catalogue text is in `catalogue/`; the listings are a branch of Phorepoc/index (see J7).
 
 ## Status
 

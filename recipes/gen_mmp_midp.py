@@ -68,7 +68,7 @@ for line in open(W + "/rec-midp.log", errors="replace"):
         midp_srcs.append(m.group(2))
 # ---- the VM: one product compile command for the flags, libcldc_vm.a's members for the sources -----------------
 vm_line = [l for l in open(W + "/rec-cldc.log", errors="replace")
-               if l.startswith("g++") and "-c /work/pm/cldc/src/vm/cpu/c/FloatSupport_c.cpp" in l][-1]   # the last = the product target
+               if l.startswith("g++") and ("-c " + PM + "/cldc/src/vm/cpu/c/FloatSupport_c.cpp") in l][-1]   # the last = the product target
 take_flags(shlex.split(vm_line), base=CLDC_PROD, cldc=True)   # the VM's own value wins (JVM_RELEASE_VERSION is quoted there)
 VM = PM + "/cldc/src/vm"
 VM_SRC = [VM + "/cpu/c/FloatSupport_c.cpp"]
