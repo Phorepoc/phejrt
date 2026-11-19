@@ -39,6 +39,8 @@ git -C "$PM" apply "$PMS/patches/0001-build-with-a-current-gcc.patch"     # cldc
 git -C "$PM" apply "$PMS/patches/0003-midp-host-build-fixes.patch"        # midp: four small fixes (see the patch)
 git -C "$PM" apply "$PMS/patches/0004-cldc-c-interpreter-javacall-and-midp-assert.patch"   # J3: javacall_c (C interpreter) + ASSERT
 patch -p1 -d "$PM" < "$PMS/patches/0005-cldc-breakpoint-symbian.patch" > /dev/null   # J3: a breakpoint aborts on Symbian (a hunk of 0002; applies with fuzz, hence patch(1))
+patch -p1 -d "$PM" < "$PMS/patches/0006-cldc-double-word-order-not-arm.patch" > /dev/null   # J4: x32 doubles are little endian (Math.sqrt gave 0)
+patch -p1 -d "$PM" < "$PMS/patches/0007-midp-javataskimpl-clean-exit.patch" > /dev/null   # J4: a MIDlet that ends itself is a clean exit
 
 # 32-bit compiler wrappers: the makefiles call plain gcc/g++ and expect an i386 host. -static is dropped (the static libm
 # of multilib glibc lacks fmod), warnings are off (2007 code), -lm and $EXTRA_LD are appended at link time.

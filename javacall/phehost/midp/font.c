@@ -1,156 +1,78 @@
 /*
+ * Copyright The Phorepoc Authors
+ * SPDX-License-Identifier: GPL-2.0-only
  *
- * Copyright  1990-2007 Sun Microsystems, Inc. All Rights Reserved.
- * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER
- * 
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License version
- * 2 only, as published by the Free Software Foundation.
- * 
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * General Public License version 2 for more details (a copy is
- * included at /legal/license.txt).
- * 
- * You should have received a copy of the GNU General Public License
- * version 2 along with this work; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA
- * 
- * Please contact Sun Microsystems, Inc., 4150 Network Circle, Santa
- * Clara, CA 95054 or visit www.sun.com if you need additional
- * information or have any questions.
+ * phehost: javacall fonts from three built-in monospaced bitmap sets (font_data.c, ASCII; anything else draws as '?').
+ * The stub implementation returned zero metrics, and LCDUI divides by them (the symbol table of the text input).
  */
-
+#include "javacall_font.h"
+#include "phe_font.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-    
-    
-#include "javacall_font.h"
 
-/**
- * Set font appearance params 
- * 
- * @param face The font face to be used
- * @param style The font style to be used
- * @param size The font size to be used
- * @return <tt>JAVACALL_OK</tt> if font set successfully, 
- *         <tt>JAVACALL_FAIL</tt> or negative value otherwise
- */
-javacall_result javacall_font_set_font( javacall_font_face face, 
-                                        javacall_font_style style, 
-                                        javacall_font_size size) {
-    return JAVACALL_FAIL;                                        
+static int cur_size = 1;        /* 0 small, 1 medium, 2 large */
+static int cur_bold = 0;
+
+static int pick(javacall_font_size size) {
+    /* MIDP: SIZE_SMALL = 8, SIZE_MEDIUM = 0, SIZE_LARGE = 16 */
+    return size == 8 ? 0 : size == 16 ? 2 : 1;
 }
-    
-    
-    
-/**
- * Draws the first n characters to Offscreen memory image specified using the current font,
- * color.
- * 
- *
- * @param color color of font
- * @param clipX1 top left X coordinate of the clipping area where the pixel 
- *               (clipX1,clipY1) is the first top-left pixel in the clip area.
- *               clipX1 is guaranteeded to be larger or equal 0 and smaller or equal 
- *               than clipX2.
- * @param clipY1 top left Y coordinate of the clipping area where the pixel 
- *               (clipX1,clipY1) is the first top-left pixel in the clip area.
- *               clipY1 is guaranteeded to be larger or equal 0 and smaller or equal 
- *               than clipY2
- * @param clipX2 bottom right X coordinate of the clipping area where the pixel 
- *               (clipX2,clipY2) is the last bottom right pixel in the clip area.
- *               clipX2 is guaranteeded to be larger or equal than clipX1 and 
- *               smaller or equal than destBufferHoriz.
- * @param clipY2 bottom right Y coordinate of the clipping area where the pixel 
- *               (clipX2,clipY2) is the last bottom right pixel in the clip area
- *               clipY2 is guaranteeded to be larger or equal than clipY1 and 
- *               smaller or equal than destBufferVert.
- * @param destBuffer  where to draw the chars
- * @param destBufferHoriz horizontal size of destination buffer
- * @param destBufferVert  vertical size of destination buffer
- * @param x The x coordinate of the top left font coordinate 
- * @param y The y coordinate of the top left font coordinate 
- * @param text Pointer to the characters to be drawn
- * @param textLen The number of characters to be drawn
- * @return <tt>JAVACALL_OK</tt> if font rendered successfully, 
- *         <tt>JAVACALL_FAIL</tt> or negative value on error or not supported
- */
-javacall_result javacall_font_draw(javacall_pixel   color, 
-                        int                         clipX1, 
-                        int                         clipY1, 
-                        int                         clipX2, 
-                        int                         clipY2,
-                        javacall_pixel*             destBuffer, 
-                        int                         destBufferHoriz, 
-                        int                         destBufferVert,
-                        int                         x, 
-                        int                         y, 
-                        const javacall_utf16*     text, 
-                        int                         textLen){
-    return JAVACALL_FAIL;
+
+javacall_result javacall_font_set_font(javacall_font_face face, javacall_font_style style, javacall_font_size size) {
+    (void)face;
+    cur_size = pick(size);
+    cur_bold = (style & JAVACALL_FONT_STYLE_BOLD) ? 1 : 0;
+    return JAVACALL_OK;
 }
-    
-    
-    
-/**
- * Query for the font info structure for a given font specs
- *
- * @param face The font face to be used (Defined in <B>Font.java</B>)
- * @param style The font style to be used (Defined in
- * <B>Font.java</B>)
- * @param size The font size to be used. (Defined in <B>Font.java</B>)
- *
- * @param ascent return value of font's ascent
- * @param descent return value of font's descent
- * @param leading return value of font's leading 
- * 
- * @return <tt>JAVACALL_OK</tt> if successful, <tt>JAVACALL_FAIL</tt> or 
- *         <tt>JAVACALL_FAIL</tt> or negative value on error
- *
- */
-javacall_result javacall_font_get_info( javacall_font_face  face, 
-                                        javacall_font_style style, 
-                                        javacall_font_size  size, 
-                                        /*out*/ int* ascent,
-                                        /*out*/ int* descent,
-                                        /*out*/ int* leading) 
-{
-    *ascent =0;
-    *descent=0;
-    *leading=0;
-    return JAVACALL_FAIL;
+
+javacall_result javacall_font_get_info(javacall_font_face face, javacall_font_style style, javacall_font_size size,
+                                       /*out*/ int* ascent, /*out*/ int* descent, /*out*/ int* leading) {
+    const phe_font_metrics* f = &phe_fonts[pick(size)];
+    (void)face; (void)style;
+    *ascent = f->ascent;
+    *descent = f->descent;
+    *leading = 1;
+    return JAVACALL_OK;
 }
-        
-/**
- * return the char width for the first n characters in charArray if
- * they were to be drawn in the font indicated by the parameters.
- *
- *
- * @param face The font face to be used
- * @param style The font style to be used
- * @param size The font size to be used
- * @param charArray The string to be measured
- * @param charArraySize The number of character to be measured
- * @return total advance width in pixels (a non-negative value)
- */
-int javacall_font_get_width(javacall_font_face     face, 
-                            javacall_font_style    style, 
-                            javacall_font_size     size,
-                            const javacall_utf16* charArray, 
-                            int                    charArraySize) {
-    return 0;
+
+int javacall_font_get_width(javacall_font_face face, javacall_font_style style, javacall_font_size size,
+                            const javacall_utf16* charArray, int charArraySize) {
+    const phe_font_metrics* f = &phe_fonts[pick(size)];
+    (void)face; (void)charArray;
+    return charArraySize * f->width + ((style & JAVACALL_FONT_STYLE_BOLD) ? 1 : 0);
 }
-    
-    
+
+javacall_result javacall_font_draw(javacall_pixel color, int clipX1, int clipY1, int clipX2, int clipY2,
+                                   javacall_pixel* destBuffer, int destBufferHoriz, int destBufferVert,
+                                   int x, int y, const javacall_utf16* text, int textLen) {
+    const phe_font_metrics* f = &phe_fonts[cur_size];
+    int i, row, col, pass;
+    if (clipX1 < 0) clipX1 = 0;
+    if (clipY1 < 0) clipY1 = 0;
+    if (clipX2 > destBufferHoriz) clipX2 = destBufferHoriz;
+    if (clipY2 > destBufferVert) clipY2 = destBufferVert;
+    for (i = 0; i < textLen; i++) {
+        unsigned c = text[i];
+        const unsigned short* g;
+        if (c < 32 || c > 126) c = '?';
+        g = f->glyphs + (c - 32) * f->height;
+        for (row = 0; row < f->height; row++) {
+            int py = y + row;
+            if (py < clipY1 || py >= clipY2) continue;
+            for (col = 0; col < f->width; col++) {
+                if (!(g[row] & (1 << (f->width - 1 - col)))) continue;
+                for (pass = 0; pass <= cur_bold; pass++) {
+                    int px = x + i * f->width + col + pass;
+                    if (px >= clipX1 && px < clipX2) destBuffer[py * destBufferHoriz + px] = color;
+                }
+            }
+        }
+    }
+    return JAVACALL_OK;
+}
+
 #ifdef __cplusplus
-} //extern "C"
+}
 #endif
-
-
-
-

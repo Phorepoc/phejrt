@@ -1,0 +1,12 @@
+diff --git a/cldc/src/vm/share/ROM/ROMImage.hpp b/cldc/src/vm/share/ROM/ROMImage.hpp
+--- a/cldc/src/vm/share/ROM/ROMImage.hpp
++++ b/cldc/src/vm/share/ROM/ROMImage.hpp
+@@ -193,5 +193,5 @@
+ #define ROM_BINARY_MAGIC 0xCAFEBEBE
+ 
+-#if defined (__SYMBIAN32__) && defined(__GNUC__)
+-/* IMPL_NOTE: should this be defined(ARM)? */
++#if defined (__SYMBIAN32__) && defined(__GNUC__) && defined(__arm__)
++/* Phorepoc: only the ARM Symbian targets have the mixed-endian double (the original IMPL_NOTE); x32 doubles are plain little endian */
+ #ifndef MSW_FIRST_FOR_DOUBLE
+ #define MSW_FIRST_FOR_DOUBLE 1

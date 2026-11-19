@@ -14,6 +14,10 @@
 extern "C" {
 #endif
 
+#ifdef __SYMBIAN32__
+extern int phe_ws_start(const unsigned short* fb, int w, int h);   /* phe_symbian.cpp: a WSERV window + input */
+extern void phe_ws_flush(void);
+#endif
 static javacall_pixel* fb = NULL;
 static int fb_w = 240, fb_h = 320;
 static int screen_ids[] = { 0 };
@@ -24,11 +28,16 @@ javacall_result javacall_lcd_init(void) {
     s = getenv("PHE_LCD_SIZE");
     if (s) { int w, h; if (sscanf(s, "%dx%d", &w, &h) == 2 && w > 0 && h > 0) { fb_w = w; fb_h = h; } }
     fb = (javacall_pixel*)calloc((size_t)fb_w * (size_t)fb_h, sizeof(javacall_pixel));
+#ifdef __SYMBIAN32__
+    if (fb) phe_ws_start(fb, fb_w, fb_h);
+#endif
     return fb ? JAVACALL_OK : JAVACALL_OUT_OF_MEMORY;
 }
 
 javacall_result javacall_lcd_finalize(void) {
+#ifndef __SYMBIAN32__   /* the window server thread keeps reading it */
     free(fb); fb = NULL;
+#endif
     return JAVACALL_OK;
 }
 
@@ -63,10 +72,21 @@ static void dump(int y0, int y1) {
     fclose(f);
 }
 
-javacall_result javacall_lcd_flush(int hardwareId) { (void)hardwareId; dump(0, fb_h); return JAVACALL_OK; }
+javacall_result javacall_lcd_flush(int hardwareId) {
+    (void)hardwareId;
+    dump(0, fb_h);
+#ifdef __SYMBIAN32__
+    phe_ws_flush();
+#endif
+    return JAVACALL_OK;
+}
 
 javacall_result javacall_lcd_flush_partial(int hardwareId, int ystart, int yend) {
-    (void)hardwareId; dump(ystart, yend); return JAVACALL_OK;
+    (void)hardwareId; dump(ystart, yend);
+#ifdef __SYMBIAN32__
+    phe_ws_flush();
+#endif
+    return JAVACALL_OK;
 }
 
 javacall_result javacall_lcd_set_full_screen_mode(int hardwareId, javacall_bool useFullScreen) {

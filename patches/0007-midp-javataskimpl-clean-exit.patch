@@ -1,0 +1,13 @@
+diff --git a/midp/src/ams/example/jams_port/javacall/native/runMidlet_md.c b/midp/src/ams/example/jams_port/javacall/native/runMidlet_md.c
+--- a/midp/src/ams/example/jams_port/javacall/native/runMidlet_md.c
++++ b/midp/src/ams/example/jams_port/javacall/native/runMidlet_md.c
+@@ -44,6 +44,7 @@
+     javacall_result res = runMidlet(argc, argv);
+ 
++    /* a MIDlet that ends itself returns 0 and a system shutdown 1; only a negative value is a failure */
+     javacall_lifecycle_state_changed(JAVACALL_LIFECYCLE_MIDLET_SHUTDOWN,
+-                                     (res == 1) ? JAVACALL_OK : JAVACALL_FAIL,
++                                     (res >= 0) ? JAVACALL_OK : JAVACALL_FAIL,
+                                      NULL);
+ 
+     return res;

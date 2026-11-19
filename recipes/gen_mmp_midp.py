@@ -11,7 +11,7 @@ build must see the host step's tree at the same place ($J3_WORK, default /work).
 
     python3 gen_mmp_midp.py <work> <phejrt> <stage>
 
-writes <stage>/group/phemidp.mmp, <stage>/include/phemidp_x32.h and <stage>/data/{skin.bin,_main.ks}.
+writes <stage>/group/phemidp.mmp, <stage>/include/phemidp_x32.h and <stage>/data/cfg/ (skin.bin, its PNGs, _main.ks).
 """
 import glob
 import os
@@ -146,11 +146,12 @@ mmp.append("")
 for d in incs:
     mmp.append("USERINCLUDE     " + rel(d))
 mmp += ["", "OS_LAYER_SYSTEMINCLUDE_SYMBIAN", "OS_LAYER_LIBC_SYSTEMINCLUDE", "", "STATICLIBRARY   libcrt0.lib",
-        "LIBRARY         euser.lib libc.lib libm.lib libpthread.lib libdl.lib", ""]
+        "LIBRARY         euser.lib libc.lib libm.lib libpthread.lib libdl.lib ws32.lib fbscli.lib", ""]
 open(STAGE + "/group/phemidp.mmp", "w", newline="\n").write("#include <platform_paths.hrh>\n" + "\n".join(mmp))
 
-shutil.copy(JAVACALL3 + "/lib/skin.bin", STAGE + "/data/skin.bin")
-shutil.copy(JAVACALL3 + "/appdb/_main.ks", STAGE + "/data/_main.ks")
+os.makedirs(STAGE + "/data/cfg", exist_ok=True)
+for f in glob.glob(JAVACALL3 + "/lib/*.png") + [JAVACALL3 + "/lib/skin.bin", JAVACALL3 + "/appdb/_main.ks"]:   # skin.bin, its images (the text input session divides by their size) and the keystore
+    shutil.copy(f, STAGE + "/data/cfg/" + os.path.basename(f))
 print("gen_mmp_midp: %d sources in %d directories, %d macros, %d include dirs -> %s/group/phemidp.mmp"
       % (len(allsrc), len(bydir), len(defs), len(incs), STAGE))
 names = {}
