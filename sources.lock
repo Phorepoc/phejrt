@@ -1,2 +1,2 @@
 # name	url	commit	paths (sparse)
-phoneME	https://github.com/magicus/phoneME.git	5a13f65cff07b2211b7b867c51ada4bb9c7d4f32	cldc legal
+phoneME	https://github.com/magicus/phoneME.git	5a13f65cff07b2211b7b867c51ada4bb9c7d4f32	(the whole tree; j1-host.sh)

@@ -1,35 +1,40 @@
-# phoneme-symbian
+# phejrt
 
-The phoneME Feature VM (CLDC-HI 1.1, the portable C interpreter) for Phorepoc OS. It is the Java VM that Nokia's Java
-runtime (the [jrt-symbian](https://github.com/Phorepoc/jrt-symbian) layer of the image) will run MIDlets on. The VM is
-never part of an OS image: it ships as `phoneme-symbian-x32.sis` and installs from the Catalogue store, so an owner can
-pick it or their own VM.
+The Java runtime for Phorepoc OS: phoneME Feature (CLDC-HI 1.1 with its portable C interpreter, MIDP 2.1) and our own
+"javacall" platform layer (window server, keys and touch, fonts, files, timers). A MIDlet suite installs as an ordinary
+package; every MIDlet gets its own entry, name and icon in the menu. Two packages come out of this repository, through
+Catalogue:
 
-We don't keep a copy of phoneME here. `recipes/fetch.sh` fetches the tree pinned in `sources.lock` and applies
-`patches/`. This repository holds the patches, the build recipes and the registry entry.
+- `phejava-runtime-x32.sis` -- the runtime (phemidp.exe), its skin, the licences and the written source offer;
+- `phejava-demo-x32.sis` -- two demo MIDlets (a form and a canvas) that depend on the runtime.
 
-## Building
+We don't keep a copy of phoneME here. `recipes/j1-host.sh` fetches the tree pinned in `sources.lock` and applies
+`patches/`. This repository holds the patches, our javacall port (`javacall/phehost`), the build and packaging recipes and
+the registry entries.
 
-1. `recipes/prepare.sh` runs three steps:
-   - `fetch.sh` fetches the pinned tree and applies the patches.
-   - `hostgen.sh` runs phoneME's own 32-bit host build: the class library, romgen and the ROM image of the class
-     library. As a check, it also runs a class on the host VM. It needs a JDK 8 and gcc-multilib, so outside such a
-     container it runs in `eclipse-temurin:8-jdk`.
-   - `gen_mmp.py` writes the VM's `.mmp` from that build.
-2. In the toolchain container, with `PHOREPOC_ADAPTATIONS=...:<phoneme-symbian>`, build the component:
-   `phe component build phoneme_vm` (or the pdk's `build_mmp_x32.py phoneme_vm`).
-3. `recipes/sis.sh` makes `$PHOREPOC_BUILD/sis/phoneme-symbian-x32.sis`, with the licences, `NOTICE` and the written
-   source offer.
+## Building (CI: `.github/workflows/release.yml`)
+
+The pdk's `package.yml` builds `package.conf` on every push to main and releases what Conventional Commits ask for:
+
+1. `recipes/prepare.sh` (on the runner, with a JDK 8 and gcc-multilib): `j1-host.sh` (phoneME's host build with our port),
+   `j2-host.sh` (the headless run that checks it), `j3-gen.sh` (the C-interpreter VM, MIDP, and the Symbian `.mmp` from
+   their compiler commands), all under `$PHOREPOC_BUILD/jrt`, bind-mounted at `/build` because the generated sources name
+   each other by absolute path.
+2. In the toolchain container: `phe component build phejlaunch phemidp_sis` (`registry/components_phejrt.py`).
+3. `recipes/sis.sh` runs `recipes/j5-pack.py` for both packages (the toolchain image's rcomp and mifconv make the
+   registration resources and the icon).
 
 ## What's in here
 
-- `patches/0001`: phoneME's 2007 makefiles with a current gcc and binutils.
-- `patches/0002`: the Linux OS layer over Open C / P.I.P.S.:
-  - no POSIX signals or ucontext (a timer thread drives the ticks);
-  - heap chunks instead of anonymous mmap;
-  - `fd_set` comes from `sys/select.h`;
-  - a breakpoint or panic aborts the process.
-- `os/src/phoneme/phoneme_x32.h`: the switches phoneME's makefiles put on the compiler line.
+- `patches/`: phoneME's 2007 makefiles with a current gcc (0001), host-build fixes (0003), the C-interpreter configuration
+  for the javacall platform (0004), a breakpoint that aborts on Symbian (0005), the x32 double word order (0006), a clean
+  exit status (0007).
+- `javacall/phehost`: our javacall implementation: libc memory and files, pthread events and timers, an RGB565 display with
+  a window-server window on Symbian (phe_symbian.cpp), key and pointer input, built-in bitmap fonts.
+- `os/src/phejlaunch`: the per-suite launcher (a copy per application, with its UID); `os/src/phejdrv`: the boot-test driver.
+- `recipes/`: the build (`j1-host.sh`, `j2-host.sh`, `j3-gen.sh`, `gen_mmp_midp.py`), the packer (`j5-pack.py`), and the
+  QEMU test scripts (`j4-volume.sh`, `j4-rom-boot.sh`).
+- `catalogue/`: the store text and the unpublished listing drafts.
 
 ## J1: phoneME MIDP on a Linux host (2026-11-18)
 
@@ -135,7 +140,7 @@ Cyrillic (343 glyphs per size).
 - `suite --jad hello.jad --jar hello.jar --launcher phejlaunch.exe`: every `MIDlet-n: name, icon, class` of the JAD (or of the
   jar's MANIFEST.MF) becomes an application of its own, UID = suite UID (`Phorepoc-UID` or `--suite-uid`) + n-1: a launcher
   copy with that UID3, a registration and a localisable resource with the caption and the suite icon (an SVG-Tiny file,
-  default `os/data/phejava_icon.svg`, through mifconv into a `.mif`), and `launch.txt` with its class. The jar is installed once
+  default `os/src/phejlaunch/phejava_icon.svg`, through mifconv into a `.mif`), and `launch.txt` with its class. The jar is installed once
   under `\resource\phejava\suites\<suite uid>\`.
 - `runtime --runtime phemidp_sis.exe --cfg <dir>`: the runtime package (phemidp.exe, skin, licences, source offer). The suite
   package declares it as a dependency (`--runtime-uid`, `--runtime-version`); `suite --runtime ...` makes one combined package.
@@ -147,10 +152,10 @@ The Catalogue listing drafts are in `catalogue/` (summary, description, `listing
 
 ## Status
 
-`cldc_vm.exe` links for x32 with 0 link stubs, and the SIS builds. It has not yet run on a device or in QEMU. The JNI
-layer for the JRT natives and the `j9.dll` launcher come next (plan steps P3 to P5).
+Runs on Phorepoc x86 (QEMU): install, menu entry and icon, start from the menu, keys, touch, RMS on C:, uninstall.
+Not done: networking, push, sound, the optional JSRs, OTA install from a JAD.
 
 ## Licence
 
 GPL-2.0-only, the licence of phoneME (see `NOTICE`). phoneME's VM and class-library sources carry no Classpath
-exception.
+exception. The built-in fonts are rendered from DejaVu Sans Mono (Bitstream Vera licence, see `NOTICE`).

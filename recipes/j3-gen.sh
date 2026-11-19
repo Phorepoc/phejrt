@@ -40,6 +40,8 @@ rm -rf "$J/phehome" "$J/phecfg"; mkdir -p "$J/phehome" "$J/phecfg"; cp "$J/lib/s
     -classpathext "$W/j1/hello.jar" 2>&1 | grep -a '\[J1\]' )
 say "G5 the Symbian .mmp"
 rm -rf "$W/j3"
-python3 "$HERE/gen_mmp_midp.py" "$W" "$PMS" "$W/j3"
+# the generated mmp names our port by relative path from $W/j3/group: keep a copy of it inside $W (the build container does not see the checkout)
+rm -rf "$W/phejrt"; mkdir -p "$W/phejrt/javacall"; cp -r "$PMS/javacall/phehost" "$W/phejrt/javacall/"
+python3 "$HERE/gen_mmp_midp.py" "$W" "$W/phejrt" "$W/j3"
 cp "$W/j1/hello.jar" "$W/j3/data/hello.jar"
 say "done: $W/j3 (group/phemidp.mmp, include/phemidp_x32.h, data/{cfg/*,hello.jar})"

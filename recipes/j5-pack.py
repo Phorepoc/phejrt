@@ -12,7 +12,7 @@ The suite is described by its JAD (or, without --jad, by the jar's META-INF/MANI
   * `!:\\sys\\bin\\phejl_<uid>.exe`   the template phejlaunch.exe with this application's UID3 and SID (no capabilities);
                                      the UIDs are the suite UID (JAD `Phorepoc-UID`, or --suite-uid) plus the MIDlet's index
   * `!:\\private\\10003a3f\\import\\apps\\phejl_<uid>_reg.rsc` + `!:\\resource\\apps\\phejl_<uid>_loc.rsc` + the suite's icon
-    (`!:\\resource\\apps\\phejava_<suite uid>.mif`, from --icon or os/data/phejava_icon.svg, SVG-Tiny through mifconv)
+    (`!:\\resource\\apps\\phejava_<suite uid>.mif`, from --icon or os/src/phejlaunch/phejava_icon.svg, SVG-Tiny through mifconv)
   * `!:\\private\\<uid>\\launch.txt`  the runtime's command line: `-1 <class> -classpathext <jar>`
   * `!:\\resource\\phejava\\suites\\<suite uid>\\app.jar`   the suite (readable by the runtime: another process cannot read a
                                      private directory)
@@ -25,6 +25,7 @@ with the Linux builds of those tools). Source offer and licences: this repositor
 """
 import argparse
 import os
+import shutil
 import struct
 import subprocess
 import sys
@@ -72,18 +73,32 @@ def repo():
     return r
 
 
+def in_toolchain():
+    """The pdk's toolchain container (CI): rcomp and mifconv are on PATH, the pdk's tools do the work."""
+    return shutil.which("rcomp") is not None and shutil.which("mifconv") is not None and         os.path.isfile(os.path.join(PDK, "tools", "rsc.py"))
+
+
 def compile_rss(text, name, out_rsc):
     d = tempfile.mkdtemp()
     rss = os.path.join(d, name + ".rss")
     open(rss, "w").write(text)
-    py = os.environ.get("PHE_PY", "py" if os.name == "nt" else "python3")
-    r = subprocess.run([py, os.path.join(repo(), "tools", "rsc.py"), rss, out_rsc], cwd=repo(), capture_output=True, text=True)
+    if in_toolchain():
+        r = subprocess.run([sys.executable, os.path.join(PDK, "tools", "rsc.py"), rss, out_rsc], cwd=PDK, capture_output=True, text=True)
+    else:
+        py = os.environ.get("PHE_PY", "py" if os.name == "nt" else "python3")
+        r = subprocess.run([py, os.path.join(repo(), "tools", "rsc.py"), rss, out_rsc], cwd=repo(), capture_output=True, text=True)
     if r.returncode or not os.path.isfile(out_rsc):
         sys.exit("j5-pack: rcomp failed on %s:\n%s%s" % (name, r.stdout[-800:], r.stderr[-800:]))
 
 
 def make_mif(svg, out):
     """An SVG-Tiny file into an S60 .mif (NVG-encoded) with the release's mifconv + svgtbinencode."""
+    if in_toolchain():
+        out_mif = os.path.join(tempfile.mkdtemp(), os.path.basename(out))
+        r = subprocess.run([sys.executable, os.path.join(PDK, "tools", "app_icon_mif.py"), svg, out_mif], cwd=PDK, capture_output=True, text=True)
+        if r.returncode or not os.path.isfile(out_mif):
+            sys.exit("j5-pack: app_icon_mif failed: " + (r.stdout + r.stderr)[-400:])
+        return open(out_mif, "rb").read()
     bindir = os.path.join(repo(), "tools", "host", "bin")
     ext = ".exe" if os.name == "nt" else ""
     stage = tempfile.mkdtemp()
@@ -135,7 +150,7 @@ def main():
     ap.add_argument("--jar")
     ap.add_argument("--suite-uid", type=lambda x: int(x, 0))
     ap.add_argument("--launcher", help="phejlaunch.exe built with sis=True")
-    ap.add_argument("--icon", default=os.path.join(PMS, "os", "data", "phejava_icon.svg"))
+    ap.add_argument("--icon", default=os.path.join(PMS, "os", "src", "phejlaunch", "phejava_icon.svg"))
     ap.add_argument("--runtime", help="phemidp.exe built with sis=True: carry the runtime in this package (always for `runtime`)")
     ap.add_argument("--runtime-uid", type=lambda x: int(x, 0), default=0xE5A0F000, help="package UID of the runtime package")
     ap.add_argument("--runtime-version", default="0.3.0")
