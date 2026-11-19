@@ -2,10 +2,18 @@
  * Copyright The Phorepoc Authors
  * SPDX-License-Identifier: GPL-2.0-only
  *
- * phejdrv -- the boot-test driver for J5 (staged as the SSM test EXE): install c:\sisinst.sis with the real installer
- * (sisinst.exe, in the ROM), wait until AppArc lists the application whose UID is in c:\phejdrv.txt (hex; default E5A0A001),
- * print its caption, then start it through AppArc exactly as the menu does (RApaLsSession::StartApp). Every line is
- * "[J5] ..." on the debug port.
+ * phejdrv -- the boot-test driver for J5/J6 (staged as the SSM test EXE). It runs the script c:\phejdrv.txt, one command per
+ * line ('#' starts a comment), and prints every step as "[J5] ..." on the debug port:
+ *
+ *   install <path.sis>       install with the real installer (sisinst.exe, in the ROM); prints the exit code
+ *   install-fail <path.sis>  the same, but the install is expected to fail (e.g. a missing dependency)
+ *   list <hexuid> ...        wait (up to 90 s) until AppArc lists every application, print its caption
+ *   start <hexuid>           start the application through AppArc, exactly as the menu does
+ *   sleep <seconds>
+ *   uninstall <hexuid>       sisinst -u <package uid> (silent, kills a running application)
+ *   gone <hexuid> ...        every application is no longer listed by AppArc and its launcher file is deleted
+ *
+ * No script: the J5 test (install c:\sisinst.sis, list and start e5a0a001, or the UID in a one-line c:\phejdrv.txt).
  */
 #include <e32std.h>
 #include <e32base.h>
@@ -14,71 +22,158 @@
 #include <apgcli.h>
 #include <apacmdln.h>
 
-static TUint32 WantedUid()
+static TInt RunSisinst(const TDesC& aArgs)
 	{
-	TUint32 uid = 0xE5A0A001;
-	RFs fs;
-	if (fs.Connect() == KErrNone)
-		{
-		RFile f;
-		if (f.Open(fs, _L("c:\\phejdrv.txt"), EFileRead) == KErrNone)
-			{
-			TBuf8<32> b;
-			f.Read(b);
-			f.Close();
-			TBuf<32> w;
-			w.Copy(b);
-			TLex lex(w);
-			TUint32 v;
-			if (lex.Val(v, EHex) == KErrNone)
-				uid = v;
-			}
-		fs.Close();
-		}
-	return uid;
+	RProcess inst;
+	TInt r = inst.Create(_L("sisinst.exe"), aArgs);
+	if (r != KErrNone)
+		return r;
+	TRequestStatus st;
+	inst.Logon(st);
+	inst.Resume();
+	User::WaitForRequest(st);
+	r = inst.ExitReason();
+	inst.Close();
+	return r;
 	}
 
-static void DoL()
+static TBool Listed(RApaLsSession& aLs, TUint32 aUid, TApaAppInfo& aInfo)
 	{
-	// 1. the install
-	RProcess inst;
-	TInt r = inst.Create(_L("sisinst.exe"), _L("c:\\sisinst.sis"));
-	RDebug::Printf("[J5] sisinst create %d", r);
-	if (r == KErrNone)
+	return aLs.GetAppInfo(aInfo, TUid::Uid(aUid)) == KErrNone;
+	}
+
+static void ListL(RApaLsSession& aLs, TLex& aLex)
+	{
+	TPtrC t;
+	for (t.Set(aLex.NextToken()); t.Length(); t.Set(aLex.NextToken()))
 		{
-		TRequestStatus st;
-		inst.Logon(st);
-		inst.Resume();
-		User::WaitForRequest(st);
-		RDebug::Printf("[J5] sisinst exit %d (%d)", inst.ExitReason(), st.Int());
-		inst.Close();
-		}
-	// 2. AppArc lists the registration
-	const TUint32 uid = WantedUid();
-	RApaLsSession ls;
-	User::LeaveIfError(ls.Connect());
-	CleanupClosePushL(ls);
-	TApaAppInfo info;
-	TInt found = KErrNotFound;
-	for (TInt i = 0; i < 90 && found != KErrNone; i++)
-		{
-		found = ls.GetAppInfo(info, TUid::Uid(uid));
-		if (found != KErrNone)
+		TLex u(t);
+		TUint32 uid = 0;
+		u.Val(uid, EHex);
+		TApaAppInfo info;
+		TInt i = 0;
+		while (!Listed(aLs, uid, info) && i++ < 90)
 			User::After(1000000);
+		if (i > 90)
+			RDebug::Printf("[J5] app %08x NOT in the AppArc list", uid);
+		else
+			RDebug::Printf("[J5] AppArc lists %08x: caption '%S'", uid, &info.iCaption);
 		}
-	if (found != KErrNone)
+	}
+
+static void StartL(RApaLsSession& aLs, TUint32 aUid)
+	{
+	TApaAppInfo info;
+	if (!Listed(aLs, aUid, info))
 		{
-		RDebug::Printf("[J5] app %08x NOT in the AppArc list (%d)", uid, found);
-		User::Leave(found);
+		RDebug::Printf("[J5] start %08x: not listed", aUid);
+		return;
 		}
-	RDebug::Printf("[J5] AppArc lists %08x: caption '%S' file '%S'", uid, &info.iCaption, &info.iFullName);
-	// 3. start it as the menu does
 	CApaCommandLine* cmd = CApaCommandLine::NewLC();
 	cmd->SetExecutableNameL(info.iFullName);
 	cmd->SetCommandL(EApaCommandRun);
 	TThreadId tid;
-	r = ls.StartApp(*cmd, tid);
-	RDebug::Printf("[J5] StartApp %08x -> %d", uid, r);
+	TInt r = aLs.StartApp(*cmd, tid);
+	RDebug::Printf("[J5] StartApp %08x -> %d", aUid, r);
+	CleanupStack::PopAndDestroy(cmd);
+	}
+
+static void GoneL(RApaLsSession& aLs, RFs& aFs, TLex& aLex)
+	{
+	TPtrC t;
+	for (t.Set(aLex.NextToken()); t.Length(); t.Set(aLex.NextToken()))
+		{
+		TLex u(t);
+		TUint32 uid = 0;
+		u.Val(uid, EHex);
+		TApaAppInfo info;
+		TBool listed = Listed(aLs, uid, info);
+		TInt i = 0;
+		while (listed && i++ < 30)
+			{
+			User::After(1000000);
+			listed = Listed(aLs, uid, info);
+			}
+		TFileName f;
+		f.Format(_L("c:\\sys\\bin\\phejl_%08x.exe"), uid);
+		TEntry ent;
+		TBool file = aFs.Entry(f, ent) == KErrNone;
+		RDebug::Printf("[J5] %08x after uninstall: listed %d, launcher file %d -> %s", uid, listed, file, (listed || file) ? "STILL THERE" : "GONE");
+		}
+	}
+
+static void DoL()
+	{
+	RFs fs;
+	User::LeaveIfError(fs.Connect());
+	CleanupClosePushL(fs);
+	RApaLsSession ls;
+	User::LeaveIfError(ls.Connect());
+	CleanupClosePushL(ls);
+	RFile f;
+	TBuf8<1024> script;
+	TInt r = f.Open(fs, _L("c:\\phejdrv.txt"), EFileRead);
+	if (r == KErrNone)
+		{
+		f.Read(script);
+		f.Close();
+		}
+	TBuf<1024> text;
+	text.Copy(script);
+	// the J5 form: a lone hex UID (or nothing) = install c:\sisinst.sis, list + start that application
+	if (r != KErrNone || (text.Locate('\n') == KErrNotFound && text.Locate(' ') == KErrNotFound))
+		{
+		TLex lex(text);
+		TUint32 uid = 0xE5A0A001;
+		if (text.Length())
+			lex.Val(uid, EHex);
+		text.Format(_L("install c:\\sisinst.sis\nlist %x\nstart %x\n"), uid, uid);
+		}
+	TInt pos = 0;
+	while (pos < text.Length())
+		{
+		TInt nl = text.Mid(pos).Locate('\n');
+		TPtrC line;
+		line.Set(nl == KErrNotFound ? text.Mid(pos) : text.Mid(pos, nl));
+		pos += nl == KErrNotFound ? text.Length() : nl + 1;
+		TLex lex(line);
+		lex.SkipSpace();
+		TPtrC cmd = lex.NextToken();
+		if (cmd.Length() == 0 || cmd[0] == '#')
+			continue;
+		if (cmd == _L("install") || cmd == _L("install-fail"))
+			{
+			TPtrC path = lex.NextToken();
+			TInt e = RunSisinst(path);
+			RDebug::Printf("[J5] %S %S -> %d%s", &cmd, &path, e, cmd == _L("install-fail") ? (e != KErrNone ? " (refused, as expected)" : " (UNEXPECTEDLY installed)") : "");
+			}
+		else if (cmd == _L("list"))
+			ListL(ls, lex);
+		else if (cmd == _L("start"))
+			{
+			TUint32 uid = 0;
+			lex.SkipSpace();
+			lex.Val(uid, EHex);
+			StartL(ls, uid);
+			}
+		else if (cmd == _L("sleep"))
+			{
+			TInt s = 0;
+			lex.SkipSpace();
+			lex.Val(s);
+			User::After(s * 1000000);
+			}
+		else if (cmd == _L("uninstall"))
+			{
+			TBuf<64> a;
+			TPtrC pk = lex.NextToken();
+			a.Format(_L("-u %S"), &pk);
+			TInt e = RunSisinst(a);
+			RDebug::Printf("[J5] uninstall %S -> %d", &a, e);
+			}
+		else if (cmd == _L("gone"))
+			GoneL(ls, fs, lex);
+		}
 	CleanupStack::PopAndDestroy(2);
 	}
 

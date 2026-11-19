@@ -70,7 +70,7 @@ midp() {  # midp <build dir> <out> <pcsl out> <cldc dist> [make args]; serial (a
 hello() {  # hello <midp out> <cldc classes.zip> <cldc dist>: compile, preverify and jar HelloJ1 against that build
     local CP=$1/classes.zip:$2
     mkdir -p "$W/j1/c" "$W/j1/v"
-    javac -encoding UTF-8 -nowarn -source 1.3 -target 1.1 -bootclasspath "$CP" -d "$W/j1/c" "$HERE/j1/HelloJ1.java" 2>&1 | grep -v warning || true
+    javac -encoding UTF-8 -nowarn -source 1.3 -target 1.1 -bootclasspath "$CP" -d "$W/j1/c" "$HERE"/j1/*.java 2>&1 | grep -v warning || true
     "$3/bin/preverify" -classpath "$CP" -d "$W/j1/v" "$W/j1/c"
     ( cd "$W/j1/v" && jar cf ../hello.jar *.class )
 }

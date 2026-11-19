@@ -129,6 +129,22 @@ command line is built into the runtime. Tested on QEMU x86: `phejdrv.exe` (the b
 the test MIDlet prints the record count of a store it adds to. The built-in fonts now cover ASCII, Latin-1, Greek and
 Cyrillic (343 glyphs per size).
 
+## J6: JAD-aware packages, a runtime package and a suite package, uninstall (2026-11-19)
+
+`recipes/j5-pack.py runtime|suite`:
+- `suite --jad hello.jad --jar hello.jar --launcher phejlaunch.exe`: every `MIDlet-n: name, icon, class` of the JAD (or of the
+  jar's MANIFEST.MF) becomes an application of its own, UID = suite UID (`Phorepoc-UID` or `--suite-uid`) + n-1: a launcher
+  copy with that UID3, a registration and a localisable resource with the caption and the suite icon (an SVG-Tiny file,
+  default `os/data/phejava_icon.svg`, through mifconv into a `.mif`), and `launch.txt` with its class. The jar is installed once
+  under `\resource\phejava\suites\<suite uid>\`.
+- `runtime --runtime phemidp_sis.exe --cfg <dir>`: the runtime package (phemidp.exe, skin, licences, source offer). The suite
+  package declares it as a dependency (`--runtime-uid`, `--runtime-version`); `suite --runtime ...` makes one combined package.
+- A suite package must not carry files of the runtime package (same target = the install fails with -30477, "file in use"): its
+  three notices live in `\resource\phejava\suites\<uid>\licences\`.
+Test: `recipes/j4-rom-boot.sh` with `TESTEXE=phejdrv.exe DRVSCRIPT=<script> SISFILES="rt.sis=RT.SIS suite.sis=SUITE.SIS"`; the
+driver (os/src/phejdrv) runs `install`, `install-fail`, `list`, `start`, `sleep`, `uninstall <package uid>`, `gone` lines.
+The Catalogue listing drafts are in `catalogue/` (summary, description, `listing-draft/*.json`; not published).
+
 ## Status
 
 `cldc_vm.exe` links for x32 with 0 link stubs, and the SIS builds. It has not yet run on a device or in QEMU. The JNI

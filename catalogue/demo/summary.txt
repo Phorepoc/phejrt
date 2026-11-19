@@ -1,0 +1,1 @@
+Two small MIDlets that show the Java runtime: a form with a number field, and a canvas that reports touch and keys.

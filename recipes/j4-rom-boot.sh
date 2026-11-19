@@ -58,6 +58,10 @@ mkdir -p /out/disk /out/ekern
 [ "${KEEPDISK:-0}" = 1 ] && [ -f /out/disk/boot.img ] || cp /out/disk/regress-template.img /out/disk/boot.img
 # SIS=<file in $REPO>: put it on C: as SISINST.SIS (the install test's input); DRVTXT=<hex uid>: C:\PHEJDRV.TXT for phejdrv
 [ -z "${SIS:-}" ] || MTOOLS_SKIP_CHECK=1 mcopy -o -i /out/disk/boot.img@@1M "$SIS" ::SISINST.SIS
+# SISFILES="<file in $REPO>=<8.3 name on C:> ...": more files onto C: (the J6 script names them c:\RT.SIS ...); DRVSCRIPT=<file>: the
+# driver's script as C:\PHEJDRV.TXT (commands: os/src/phejdrv/phejdrv.cpp)
+for kv in ${SISFILES:-}; do MTOOLS_SKIP_CHECK=1 mcopy -o -i /out/disk/boot.img@@1M "${kv%%=*}" "::${kv#*=}"; done
+[ -z "${DRVSCRIPT:-}" ] || MTOOLS_SKIP_CHECK=1 mcopy -o -i /out/disk/boot.img@@1M "$DRVSCRIPT" ::PHEJDRV.TXT
 [ -z "${DRVTXT:-}" ] || { printf '%s' "$DRVTXT" > /tmp/phejdrv.txt; MTOOLS_SKIP_CHECK=1 mcopy -o -i /out/disk/boot.img@@1M /tmp/phejdrv.txt ::PHEJDRV.TXT; }
 export SECONDARY=rom SCREEN=${SCREEN:-360x640} SCALE=${SCALE:-2} MEM=512 DISK=1 DISKIMG=/out/disk/boot.img SHOT=1 \
        SHOT_WAIT=${SHOT_WAIT:-380} SECS=${SECS:-420} LOGMAX=4000000 KCLEAN=0 UARTBATCH=0 DUMP=0 SLIDE=0 \

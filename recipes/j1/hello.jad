@@ -1,0 +1,8 @@
+MIDlet-Name: Phorepoc demo suite
+MIDlet-Vendor: Phorepoc
+MIDlet-Version: 1.0.0
+MIDlet-1: HelloJ1, , HelloJ1
+MIDlet-2: HelloJ2, , HelloJ2
+MicroEdition-Profile: MIDP-2.1
+MicroEdition-Configuration: CLDC-1.1
+Phorepoc-UID: 0xE5A0A001
